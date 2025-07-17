@@ -1,11 +1,12 @@
-package com.example.healthmonitoring.model;
+package com.example.healthmonitoring.model.domain;
 
+import com.example.healthmonitoring.model.enums.Platform;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "llm_app_config")
-public class LlmAppConfig {
+public class LlmAppConfigDO {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

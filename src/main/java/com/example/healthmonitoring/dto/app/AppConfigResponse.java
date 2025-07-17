@@ -1,6 +1,6 @@
 package com.example.healthmonitoring.dto.app;
 
-import com.example.healthmonitoring.model.Platform;
+import com.example.healthmonitoring.model.enums.Platform;
 
 import java.time.LocalDateTime;
 

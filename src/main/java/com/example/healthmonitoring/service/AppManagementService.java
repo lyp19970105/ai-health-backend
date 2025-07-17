@@ -1,7 +1,7 @@
 package com.example.healthmonitoring.service;
 
 import com.example.healthmonitoring.dto.app.AppConfigResponse;
-import com.example.healthmonitoring.model.LlmAppConfig;
+import com.example.healthmonitoring.model.domain.LlmAppConfigDO;
 import com.example.healthmonitoring.repository.LlmAppConfigRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class AppManagementService {
                 .collect(Collectors.toList());
     }
 
-    private AppConfigResponse convertToDto(LlmAppConfig appConfig) {
+    private AppConfigResponse convertToDto(LlmAppConfigDO appConfig) {
         return new AppConfigResponse(
                 appConfig.getAppCode(),
                 appConfig.getAppName(),

@@ -3,10 +3,13 @@ package com.example.healthmonitoring.service.platform;
 import com.example.healthmonitoring.dto.platform.dify.DifyChatRequest;
 import com.example.healthmonitoring.dto.platform.dify.DifySseEvent;
 import com.example.healthmonitoring.dto.frontend.FrontendChatRequest;
-import com.example.healthmonitoring.model.LlmAppConfig;
+import com.example.healthmonitoring.model.domain.ConversationDO;
+import com.example.healthmonitoring.model.domain.LlmAppConfigDO;
+import com.example.healthmonitoring.model.domain.MessageDO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -23,12 +26,21 @@ public class DifyChatService implements ChatPlatformService {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final WebClient webClient;
 
+    @Value("${dify.api.url}")
+    private String apiUrl;
+
     public DifyChatService(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
     }
 
     @Override
-    public void streamChatResponse(FrontendChatRequest frontendRequest, LlmAppConfig appConfig, SseEmitter emitter) {
+    public void streamChatResponse(FrontendChatRequest frontendRequest, LlmAppConfigDO appConfig, SseEmitter emitter, StringBuilder assistantResponse) {
+        // This method is intentionally left blank as the other one is used for Dify
+    }
+
+    @Override
+    public void streamChatResponse(FrontendChatRequest frontendRequest, LlmAppConfigDO appConfig, SseEmitter emitter,
+                                   ConversationDO conversation, MessageDO assistantMessage, StringBuilder assistantResponse) {
         DifyChatRequest apiRequest = new DifyChatRequest(
                 Collections.emptyMap(),
                 frontendRequest.getUserInput(),
@@ -36,9 +48,14 @@ public class DifyChatService implements ChatPlatformService {
                 frontendRequest.getAppCode() // Using appCode as the user for Dify
         );
 
+        if (conversation.getPlatformConversationId() != null) {
+            apiRequest.setConversationId(conversation.getPlatformConversationId());
+        }
+
         try {
+            String chatUrl = "/chat-messages";
             String requestBody = objectMapper.writeValueAsString(apiRequest);
-            logger.info("发送到 Dify API (URL: {}) 的流式请求体: {}", appConfig.getApiUrl(), requestBody);
+            logger.info("发送到 Dify API (URL: {}) 的流式请求体: {}", apiUrl + chatUrl, requestBody);
 
             webClient.post()
                     .uri(appConfig.getApiUrl())
@@ -55,9 +72,20 @@ public class DifyChatService implements ChatPlatformService {
                         if (line != null && !line.isEmpty()) {
                             try {
                                 DifySseEvent event = objectMapper.readValue(line, DifySseEvent.class);
-                                if (event.getAnswer() != null) {
-                                    logger.info("提取并发送给前端的文本块: {}", event.getAnswer());
-                                    emitter.send(SseEmitter.event().data(event.getAnswer()));
+                                if ("agent_message".equals(event.getEvent())) {
+                                    if (event.getAnswer() != null) {
+                                        logger.info("提取并发送给前端的文本块: {}", event.getAnswer());
+                                        emitter.send(SseEmitter.event().data(event.getAnswer()));
+                                        assistantResponse.append(event.getAnswer());
+                                    }
+                                } else if ("message_end".equals(event.getEvent())) {
+                                    assistantMessage.setMessageId(event.getDifyMessageId());
+                                    conversation.setPlatformConversationId(event.getDifyConversationId());
+                                    if (event.getMetadata() != null && event.getMetadata().getUsage() != null) {
+                                        assistantMessage.setPromptTokens(event.getMetadata().getUsage().getPromptTokens());
+                                        assistantMessage.setCompletionTokens(event.getMetadata().getUsage().getCompletionTokens());
+                                        assistantMessage.setTotalTokens(event.getMetadata().getUsage().getTotalTokens());
+                                    }
                                 }
                             } catch (IOException e) {
                                 logger.warn("解析JSON或发送SSE事件时出错: {}", e.getMessage());

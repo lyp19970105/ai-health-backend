@@ -1,10 +1,12 @@
 package com.example.healthmonitoring.service.platform;
 
 import com.example.healthmonitoring.dto.chat.ChatMessage;
+import com.example.healthmonitoring.dto.frontend.FrontendChatRequest;
 import com.example.healthmonitoring.dto.platform.PlatformChatRequest;
 import com.example.healthmonitoring.dto.platform.SiliconCloudSseEvent;
-import com.example.healthmonitoring.dto.frontend.FrontendChatRequest;
-import com.example.healthmonitoring.model.LlmAppConfig;
+import com.example.healthmonitoring.model.domain.ConversationDO;
+import com.example.healthmonitoring.model.domain.LlmAppConfigDO;
+import com.example.healthmonitoring.model.domain.MessageDO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +41,7 @@ public class SiliconFlowChatService implements ChatPlatformService {
     }
 
     @Override
-    public void streamChatResponse(FrontendChatRequest frontendRequest, LlmAppConfig appConfig, SseEmitter emitter) {
+    public void streamChatResponse(FrontendChatRequest frontendRequest, LlmAppConfigDO appConfig, SseEmitter emitter, StringBuilder assistantResponse) {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("system", appConfig.getSystemPrompt()));
         messages.add(new ChatMessage("user", frontendRequest.getUserInput()));
@@ -76,7 +78,7 @@ public class SiliconFlowChatService implements ChatPlatformService {
                     .doOnRequest(longNumber -> logger.info("从响应流请求数据: {}", longNumber))
                     .doOnNext(line -> {
                         logger.info("从 SiliconCloud API 收到原始行: {}", line);
-                        if (line != null && !line.isEmpty() && !"[DONE]".equalsIgnoreCase(line)) {
+                        if (line != null && !line.isEmpty()) {
                             try {
                                 SiliconCloudSseEvent event = objectMapper.readValue(line, SiliconCloudSseEvent.class);
                                 if (MSG_DETAIL_TYPE.equals(event.getType()) && event.getDelta() != null) {
@@ -84,6 +86,7 @@ public class SiliconFlowChatService implements ChatPlatformService {
                                     if (textChunk != null && !textChunk.isEmpty()) {
                                         logger.info("提取并发送给前端的文本块: {}", textChunk);
                                         emitter.send(SseEmitter.event().data(textChunk));
+                                        assistantResponse.append(textChunk);
                                     }
                                 }
                             } catch (IOException e) {
@@ -105,5 +108,11 @@ public class SiliconFlowChatService implements ChatPlatformService {
             logger.error("准备调用 SiliconCloud API 时发生严重错误", e);
             emitter.completeWithError(e);
         }
+    }
+
+    @Override
+    public void streamChatResponse(FrontendChatRequest frontendRequest, LlmAppConfigDO appConfig, SseEmitter emitter, ConversationDO conversation, MessageDO assistantMessage, StringBuilder assistantResponse) {
+        // For SiliconFlow, we don't have the extra metadata, so we just call the existing method.
+        streamChatResponse(frontendRequest, appConfig, emitter, assistantResponse);
     }
 }
