@@ -9,7 +9,7 @@ public class ChatMessage {
         this.content = content;
     }
 
-    // Getters and setters
+    // Getters and Setters
     public String getRole() {
         return role;
     }

@@ -1,11 +1,13 @@
 package com.example.healthmonitoring.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatResponse {
     private List<Choice> choices;
 
-    // Getters and setters
+    // Getters and Setters
     public List<Choice> getChoices() {
         return choices;
     }

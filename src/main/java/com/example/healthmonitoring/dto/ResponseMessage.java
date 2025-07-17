@@ -1,10 +1,13 @@
 package com.example.healthmonitoring.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ResponseMessage {
     private String role;
     private String content;
 
-    // Getters and setters
+    // Getters and Setters
     public String getRole() {
         return role;
     }

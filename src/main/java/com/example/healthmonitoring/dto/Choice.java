@@ -1,9 +1,12 @@
 package com.example.healthmonitoring.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Choice {
     private ResponseMessage message;
 
-    // Getters and setters
+    // Getters and Setters
     public ResponseMessage getMessage() {
         return message;
     }
