@@ -23,6 +23,16 @@ public class LlmAppConfig {
     @Column(name = "system_prompt", columnDefinition = "TEXT")
     private String systemPrompt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "platform", nullable = false)
+    private Platform platform;
+
+    @Column(name = "api_url", nullable = false)
+    private String apiUrl;
+
+    @Column(name = "api_key", nullable = false)
+    private String apiKey;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -79,6 +89,30 @@ public class LlmAppConfig {
 
     public void setSystemPrompt(String systemPrompt) {
         this.systemPrompt = systemPrompt;
+    }
+
+    public Platform getPlatform() {
+        return platform;
+    }
+
+    public void setPlatform(Platform platform) {
+        this.platform = platform;
+    }
+
+    public String getApiUrl() {
+        return apiUrl;
+    }
+
+    public void setApiUrl(String apiUrl) {
+        this.apiUrl = apiUrl;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
     }
 
     public LocalDateTime getCreatedAt() {
