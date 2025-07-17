@@ -1,0 +1,30 @@
+package com.example.healthmonitoring.dto.frontend;
+
+public class FrontendChatRequest {
+    private String appCode;
+    private String userInput;
+
+    public FrontendChatRequest() {
+    }
+
+    public FrontendChatRequest(String appCode, String userInput) {
+        this.appCode = appCode;
+        this.userInput = userInput;
+    }
+
+    public String getAppCode() {
+        return appCode;
+    }
+
+    public void setAppCode(String appCode) {
+        this.appCode = appCode;
+    }
+
+    public String getUserInput() {
+        return userInput;
+    }
+
+    public void setUserInput(String userInput) {
+        this.userInput = userInput;
+    }
+}

@@ -1,6 +1,6 @@
 package com.example.healthmonitoring.controller;
 
-import com.example.healthmonitoring.dto.frontend.ChatRequest;
+import com.example.healthmonitoring.dto.frontend.FrontendChatRequest;
 import com.example.healthmonitoring.service.ChatService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +21,7 @@ public class ChatController {
     private ChatService chatService;
 
     @PostMapping
-    public SseEmitter chat(@RequestBody ChatRequest chatRequest) {
+    public SseEmitter chat(@RequestBody FrontendChatRequest chatRequest) {
         logger.info("接收到SSE聊天请求，应用代码: {}, 用户输入: {}", chatRequest.getAppCode(), chatRequest.getUserInput());
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE); // 设置一个较长的超时时间
         chatService.streamChatResponse(chatRequest, emitter);
