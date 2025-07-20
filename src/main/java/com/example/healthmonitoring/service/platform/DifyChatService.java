@@ -75,7 +75,7 @@ public class DifyChatService implements ChatPlatformService {
                                 if ("agent_message".equals(event.getEvent())) {
                                     if (event.getAnswer() != null) {
                                         logger.info("提取并发送给前端的文本块: {}", event.getAnswer());
-                                        emitter.send(SseEmitter.event().data(event.getAnswer()));
+                                        emitter.send(SseEmitter.event().name("message").data(event.getAnswer()));
                                         assistantResponse.append(event.getAnswer());
                                     }
                                 } else if ("message_end".equals(event.getEvent())) {
@@ -92,14 +92,8 @@ public class DifyChatService implements ChatPlatformService {
                             }
                         }
                     })
-                    .doOnComplete(() -> {
-                        logger.info("Dify API 流已正常完成");
-                        emitter.complete();
-                    })
-                    .doOnError(error -> {
-                        logger.error("调用 Dify API 流时发生错误", error);
-                        emitter.completeWithError(error);
-                    })
+                    .doOnComplete(emitter::complete)
+                    .doOnError(emitter::completeWithError)
                     .subscribe();
 
         } catch (Exception e) {
