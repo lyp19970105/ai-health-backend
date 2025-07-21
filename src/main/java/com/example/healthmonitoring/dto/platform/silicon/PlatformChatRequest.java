@@ -1,4 +1,4 @@
-package com.example.healthmonitoring.dto.platform;
+package com.example.healthmonitoring.dto.platform.silicon;
 
 import com.example.healthmonitoring.dto.chat.ChatMessage;
 import com.fasterxml.jackson.annotation.JsonProperty;

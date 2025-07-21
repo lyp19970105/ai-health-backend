@@ -1,4 +1,4 @@
-package com.example.healthmonitoring.model.enums;
+package com.example.healthmonitoring.enums;
 
 public enum Platform {
     DIFY,

@@ -1,4 +1,4 @@
-package com.example.healthmonitoring.dto.platform;
+package com.example.healthmonitoring.dto.platform.silicon;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

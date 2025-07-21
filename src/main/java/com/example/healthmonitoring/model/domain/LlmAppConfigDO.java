@@ -1,6 +1,6 @@
 package com.example.healthmonitoring.model.domain;
 
-import com.example.healthmonitoring.model.enums.Platform;
+import com.example.healthmonitoring.enums.Platform;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 

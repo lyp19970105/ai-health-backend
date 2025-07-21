@@ -1,17 +1,26 @@
-package com.example.healthmonitoring.dto.frontend;
+package com.example.healthmonitoring.dto.frontend.request;
 
 public class FrontendChatRequest {
     private String appCode;
     private String userInput;
-    private Long conversationId; // 可选，用于连续对话
+    private String model;
+    private Long conversationId;
+    // 可选，用于连续对话
 
-    public FrontendChatRequest() {
-    }
 
-    public FrontendChatRequest(String appCode, String userInput, Long conversationId) {
+    public FrontendChatRequest(String appCode, String userInput, String model, Long conversationId) {
         this.appCode = appCode;
         this.userInput = userInput;
+        this.model = model;
         this.conversationId = conversationId;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
     }
 
     public String getAppCode() {
