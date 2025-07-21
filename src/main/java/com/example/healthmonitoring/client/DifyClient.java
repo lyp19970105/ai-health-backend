@@ -1,5 +1,7 @@
 package com.example.healthmonitoring.client;
 
+import com.example.healthmonitoring.dto.frontend.response.ChatResponse;
+import com.example.healthmonitoring.dto.platform.CommonChatResponse;
 import com.example.healthmonitoring.dto.platform.dify.DifyChatRequest;
 import com.example.healthmonitoring.dto.platform.dify.DifySseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +31,7 @@ public class DifyClient {
         this.webClient = webClientBuilder.build();
     }
 
-    public Flux<String> sendMessageStream(String apiKey, String userInput, String conversationId) {
+    public Flux<CommonChatResponse> sendMessageStream(String apiKey, String userInput, String conversationId) {
         logger.info("准备向Dify发送流式消息。用户输入: {}, 会话ID: {}", userInput, conversationId);
 
         DifyChatRequest apiRequest = new DifyChatRequest(
@@ -61,15 +63,24 @@ public class DifyClient {
                     .doOnSubscribe(subscription -> logger.info("已成功订阅Dify的SSE事件流。"))
                     .mapNotNull(line -> {
                         logger.info("从Dify收到原始数据: {}", line);
+                        CommonChatResponse chatResponse = new CommonChatResponse();
                         try {
                             DifySseEvent event = objectMapper.readValue(line, DifySseEvent.class);
                             logger.debug("成功解析Dify SSE事件: event={}, answer={}, conversation_id={}", event.getEvent(), event.getAnswer(), event.getDifyConversationId());
                             if ("agent_message".equals(event.getEvent())) {
                                 logger.info("收到Dify消息块，内容: '{}'", event.getAnswer());
-                                return event.getAnswer();
+                                chatResponse.setAnswer(event.getAnswer());
+                                chatResponse.setConversationId(event.getDifyConversationId());
+                                return chatResponse;
                             } else if ("message_end".equals(event.getEvent())) {
+                                chatResponse.setConversationId(event.getDifyConversationId());
+                                if (event.getMetadata() != null && event.getMetadata().getUsage() != null) {
+                                    chatResponse.setPromptTokens(event.getMetadata().getUsage().getPromptTokens());
+                                    chatResponse.setCompletionTokens(event.getMetadata().getUsage().getCompletionTokens());
+                                    chatResponse.setTotalTokens(event.getMetadata().getUsage().getTotalTokens());
+                                }
                                 logger.info("收到Dify消息结束标志。");
-                                return "";
+                                return chatResponse;
                             }
                             return null;
                         } catch (IOException e) {

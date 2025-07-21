@@ -1,6 +1,9 @@
 package com.example.healthmonitoring.client;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.example.healthmonitoring.dto.chat.ChatMessage;
+import com.example.healthmonitoring.dto.frontend.response.ChatResponse;
+import com.example.healthmonitoring.dto.platform.CommonChatResponse;
 import com.example.healthmonitoring.dto.platform.silicon.PlatformChatRequest;
 import com.example.healthmonitoring.dto.platform.silicon.SiliconCloudSseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,7 +39,7 @@ public class SiliconFlowClient {
         this.webClient = webClientBuilder.build();
     }
 
-    public Flux<String> sendMessageStream(String model, String message, String systemPrompt) {
+    public Flux<CommonChatResponse> sendMessageStream(String model, String message, String systemPrompt) {
         logger.info("准备向SiliconFlow发送流式消息。模型: {}, 用户输入: {}, 系统提示: {}", model, message, systemPrompt);
 
         List<ChatMessage> messages = new ArrayList<>();
@@ -76,9 +79,22 @@ public class SiliconFlowClient {
                         logger.info("从SiliconFlow收到原始数据: {}", line);
                         try {
                             SiliconCloudSseEvent event = objectMapper.readValue(line, SiliconCloudSseEvent.class);
-                            if (MSG_DETAIL_TYPE.equals(event.getType()) && event.getDelta() != null) {
-                                logger.info("收到SiliconFlow消息块，内容: '{}'", event.getDelta().getText());
-                                return event.getDelta().getText();
+                            logger.info("已解析SiliconFlow SSE事件: {}", JSONObject.toJSONString(event));
+                            if ("message_start".equals(event.getType())) {
+                                CommonChatResponse temp = new CommonChatResponse();
+                                temp.setConversationId(event.getMessage().getId());
+                                temp.setPromptTokens(event.getMessage().getUsage().getInputTokens());
+                                return temp;
+                            }
+                            if (MSG_DETAIL_TYPE.equals(event.getType())) {
+                                CommonChatResponse temp = new CommonChatResponse();
+                                temp.setAnswer(event.getDelta().getText());
+                                return temp;
+                            }
+                            if ("message_delta".equals(event.getType())) {
+                                CommonChatResponse temp = new CommonChatResponse();
+                                temp.setCompletionTokens(event.getUsage().getOutputTokens());
+                                return temp;
                             }
                             return null;
                         } catch (IOException e) {

@@ -211,10 +211,12 @@ public class SiliconCloudSseEvent {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UsagePayload {
-        @JsonProperty("input_tokens")
-        private int inputTokens;
+
         @JsonProperty("output_tokens")
         private int outputTokens;
+        @JsonProperty("input_tokens")
+        private int inputTokens;
+
 
         // Getters and Setters for UsagePayload
 

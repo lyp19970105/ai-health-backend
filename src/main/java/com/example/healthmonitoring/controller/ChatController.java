@@ -27,9 +27,7 @@ public class ChatController {
         logger.info("Received chat stream request: {}", chatRequest);
         return chatService.streamChat(chatRequest)
                 .map(chunk -> {
-                    ChatResponse response = new ChatResponse();
-                    response.setAnswer(chunk);
-                    return response;
+                    return chunk;
                 });
     }
 }

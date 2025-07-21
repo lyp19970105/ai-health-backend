@@ -4,11 +4,11 @@ public class FrontendChatRequest {
     private String appCode;
     private String userInput;
     private String model;
-    private Long conversationId;
+    private String conversationId;
     // 可选，用于连续对话
 
 
-    public FrontendChatRequest(String appCode, String userInput, String model, Long conversationId) {
+    public FrontendChatRequest(String appCode, String userInput, String model, String conversationId) {
         this.appCode = appCode;
         this.userInput = userInput;
         this.model = model;
@@ -39,11 +39,11 @@ public class FrontendChatRequest {
         this.userInput = userInput;
     }
 
-    public Long getConversationId() {
+    public String getConversationId() {
         return conversationId;
     }
 
-    public void setConversationId(Long conversationId) {
+    public void setConversationId(String conversationId) {
         this.conversationId = conversationId;
     }
 }
