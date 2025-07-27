@@ -87,46 +87,6 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理JWT相关异常
-     */
-    @ExceptionHandler({
-        ExpiredJwtException.class,
-        UnsupportedJwtException.class,
-        MalformedJwtException.class,
-        SignatureException.class,
-        IllegalArgumentException.class
-    })
-    public ResponseEntity<ErrorResponse> handleJwtException(
-            Exception ex, WebRequest request) {
-
-        logger.error("JWT令牌无效: {}", ex.getMessage());
-
-        String path = ((ServletWebRequest) request).getRequest().getRequestURI();
-        String errorMessage;
-
-        if (ex instanceof ExpiredJwtException) {
-            errorMessage = "JWT令牌已过期";
-        } else if (ex instanceof UnsupportedJwtException) {
-            errorMessage = "不支持的JWT令牌";
-        } else if (ex instanceof MalformedJwtException) {
-            errorMessage = "JWT令牌格式不正确";
-        } else if (ex instanceof SignatureException) {
-            errorMessage = "JWT签名验证失败";
-        } else {
-            errorMessage = "JWT令牌无效";
-        }
-
-        ErrorResponse errorResponse = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(),
-                "JWT认证失败",
-                errorMessage,
-                path
-        );
-
-        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
-    }
-
-    /**
      * 处理其他所有异常
      */
     @ExceptionHandler(Exception.class)
