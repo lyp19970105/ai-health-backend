@@ -6,5 +6,5 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ConversationDORepository extends JpaRepository<ConversationDO, Long> {
-    Page<ConversationDO> findByAppCode(String appCode, Pageable pageable);
+    Page<ConversationDO> findByAppCodeAndUserId(String appCode, Long userId, Pageable pageable);
 }

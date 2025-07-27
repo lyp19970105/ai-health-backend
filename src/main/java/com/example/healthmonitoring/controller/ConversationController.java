@@ -8,6 +8,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.healthmonitoring.security.UserPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 @RestController
 @RequestMapping("/api/v1/conversations")
 public class ConversationController {
@@ -16,8 +19,10 @@ public class ConversationController {
     private ConversationService conversationService;
 
     @GetMapping
-    public Page<ConversationSummaryDTO> getConversations(@RequestParam String appCode, Pageable pageable) {
-        return conversationService.getConversations(appCode, pageable);
+    public Page<ConversationSummaryDTO> getConversations(@RequestParam String appCode, 
+                                                       @AuthenticationPrincipal UserPrincipal currentUser,
+                                                       Pageable pageable) {
+        return conversationService.getConversations(appCode, currentUser.getId(), pageable);
     }
 
     @GetMapping("/{conversationId}")

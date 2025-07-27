@@ -23,9 +23,6 @@ public class MessageDO {
     @Column(nullable = false)
     private String content;
 
-    @Column(name = "message_id")
-    private String messageId;
-
     @Column(name = "prompt_tokens")
     private Integer promptTokens;
 
@@ -72,13 +69,6 @@ public class MessageDO {
         this.content = content;
     }
 
-    public String getMessageId() {
-        return messageId;
-    }
-
-    public void setMessageId(String messageId) {
-        this.messageId = messageId;
-    }
 
     public Integer getPromptTokens() {
         return promptTokens;
@@ -119,7 +109,6 @@ public class MessageDO {
                 ", conversationId=" + conversationId +
                 ", role='" + role + "'" +
                 ", content='" + content + "'" +
-                ", messageId='" + messageId + "'" +
                 ", promptTokens=" + promptTokens +
                 ", completionTokens=" + completionTokens +
                 ", totalTokens=" + totalTokens +

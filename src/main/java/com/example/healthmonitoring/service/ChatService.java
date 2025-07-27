@@ -12,10 +12,12 @@ import com.example.healthmonitoring.model.domain.MessageDO;
 import com.example.healthmonitoring.repository.ConversationDORepository;
 import com.example.healthmonitoring.repository.LlmAppConfigRepository;
 import com.example.healthmonitoring.repository.MessageDORepository;
+import com.example.healthmonitoring.security.UserPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +26,6 @@ import reactor.core.publisher.Flux;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,21 +50,6 @@ public class ChatService {
         LlmAppConfigDO appConfig = llmAppConfigRepository.findByAppCode(frontendRequest.getAppCode())
                 .orElseThrow(() -> new RuntimeException("App not found: " + frontendRequest.getAppCode()));
 
-        // 如果提供了会话ID，则直接流式传输，不保存新消息（假设历史记录查看模式）
-        if (frontendRequest.getConversationId() != null && !frontendRequest.getConversationId().isEmpty()) {
-            return streamWithExistingConversation(frontendRequest, appConfig);
-        } else {
-            return streamWithNewConversation(frontendRequest, appConfig);
-        }
-    }
-
-    private Flux<ChatResponse> streamWithExistingConversation(FrontendChatRequest frontendRequest, LlmAppConfigDO appConfig) {
-        // 对于现有会話，我们可以在此实现不同的逻辑，例如只流不保存，或继续保存
-        // 这里我们继续沿用保存逻辑，与新会话保持一致
-        return streamWithNewConversation(frontendRequest, appConfig);
-    }
-
-    private Flux<ChatResponse> streamWithNewConversation(FrontendChatRequest frontendRequest, LlmAppConfigDO appConfig) {
         Flux<CommonChatResponse> commonChatResponseFlux;
         if (appConfig.getPlatform() == Platform.DIFY) {
             commonChatResponseFlux = difyClient.sendMessageStream(appConfig.getApiKey(), frontendRequest.getUserInput(), frontendRequest.getConversationId());
@@ -96,7 +82,9 @@ public class ChatService {
             return;
         }
 
-        // 1. 从响应中提取关键信息
+        UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long userId = userPrincipal.getId();
+
         String platformConvId = responses.stream()
                 .map(CommonChatResponse::getConversationId)
                 .filter(Objects::nonNull)
@@ -113,16 +101,15 @@ public class ChatService {
             return;
         }
 
-        // 2. 创建并保存 ConversationDO
         ConversationDO conversation = new ConversationDO();
         conversation.setAppId(appConfig.getId());
         conversation.setAppCode(appConfig.getAppCode());
         conversation.setPlatformConversationId(platformConvId);
+        conversation.setUserId(userId);
         ConversationDO savedConversation = conversationDORepository.save(conversation);
         Long internalConvId = savedConversation.getId();
         logger.info("New conversation saved with internal ID: {} and platform ID: {}", internalConvId, platformConvId);
 
-        // 3. 保存用户消息
         MessageDO userMessage = new MessageDO();
         userMessage.setConversationId(internalConvId);
         userMessage.setRole("user");
@@ -130,7 +117,6 @@ public class ChatService {
         messageDORepository.save(userMessage);
         logger.info("User message saved for conversation ID: {}", internalConvId);
 
-        // 4. 保存AI回复消息
         MessageDO assistantMessage = new MessageDO();
         assistantMessage.setConversationId(internalConvId);
         assistantMessage.setRole("assistant");

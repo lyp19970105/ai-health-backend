@@ -24,8 +24,8 @@ public class ConversationService {
     private MessageDORepository messageDORepository;
 
     @Transactional(readOnly = true)
-    public Page<ConversationSummaryDTO> getConversations(String appCode, Pageable pageable) {
-        return conversationDORepository.findByAppCode(appCode, pageable)
+    public Page<ConversationSummaryDTO> getConversations(String appCode, Long userId, Pageable pageable) {
+        return conversationDORepository.findByAppCodeAndUserId(appCode, userId, pageable)
                 .map(this::convertToSummaryDto);
     }
 

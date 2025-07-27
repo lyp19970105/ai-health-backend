@@ -23,6 +23,9 @@ public class ConversationDO {
     @Column(name = "platform_conversation_id")
     private String platformConversationId;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -62,6 +65,14 @@ public class ConversationDO {
 
     public void setPlatformConversationId(String platformConversationId) {
         this.platformConversationId = platformConversationId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public LocalDateTime getCreatedAt() {
