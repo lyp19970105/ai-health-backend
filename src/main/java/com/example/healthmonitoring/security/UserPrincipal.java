@@ -5,11 +5,18 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 
-public class UserPrincipal implements UserDetails {
+/**
+ * 用户主体类，实现UserDetails接口
+ * 用于Spring Security认证和授权
+ * 实现Serializable接口以支持Session序列化
+ */
+public class UserPrincipal implements UserDetails, Serializable {
+    private static final long serialVersionUID = 1L;
     private Long id;
     private String nickname;
     private String username;

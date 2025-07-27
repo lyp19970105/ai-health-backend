@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 用户实体类
@@ -12,7 +15,9 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "users")
-public class UserDO {
+public class UserDO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * 用户ID，主键，自增

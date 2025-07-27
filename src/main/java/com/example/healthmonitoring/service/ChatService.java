@@ -50,6 +50,26 @@ public class ChatService {
         LlmAppConfigDO appConfig = llmAppConfigRepository.findByAppCode(frontendRequest.getAppCode())
                 .orElseThrow(() -> new RuntimeException("App not found: " + frontendRequest.getAppCode()));
 
+        // 在这里获取用户信息，而不是在事务方法中
+        Long userId = null;
+        try {
+            if (SecurityContextHolder.getContext().getAuthentication() != null) {
+                Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+                if (principal instanceof UserPrincipal) {
+                    userId = ((UserPrincipal) principal).getId();
+                    logger.info("User ID from SecurityContext: {}", userId);
+                } else {
+                    logger.warn("Principal is not UserPrincipal: {}", principal);
+                }
+            } else {
+                logger.warn("Authentication is null in SecurityContext");
+            }
+        } catch (Exception e) {
+            logger.error("Error getting user from SecurityContext", e);
+        }
+
+        final Long finalUserId = userId;
+
         Flux<CommonChatResponse> commonChatResponseFlux;
         if (appConfig.getPlatform() == Platform.DIFY) {
             commonChatResponseFlux = difyClient.sendMessageStream(appConfig.getApiKey(), frontendRequest.getUserInput(), frontendRequest.getConversationId());
@@ -61,13 +81,14 @@ public class ChatService {
 
         List<CommonChatResponse> capturedResponses = new ArrayList<>();
         ChatService self = applicationContext.getBean(ChatService.class);
-
         return commonChatResponseFlux
                 .doOnNext(capturedResponses::add)
                 .doOnTerminate(() -> {
-                    self.saveFullConversation(frontendRequest, appConfig, capturedResponses);
+                    self.saveFullConversation(frontendRequest, appConfig, capturedResponses, finalUserId);
+                    logger.info("测试12");
                 })
                 .map(commonResponse -> {
+                    logger.info("测试13");
                     ChatResponse response = new ChatResponse();
                     response.setConversationId(commonResponse.getConversationId());
                     response.setAnswer(commonResponse.getAnswer());
@@ -76,31 +97,33 @@ public class ChatService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveFullConversation(FrontendChatRequest request, LlmAppConfigDO appConfig, List<CommonChatResponse> responses) {
+    public void saveFullConversation(FrontendChatRequest request, LlmAppConfigDO appConfig, List<CommonChatResponse> responses, Long userId) {
         if (responses == null || responses.isEmpty()) {
             logger.warn("No responses from LLM, nothing to save.");
             return;
         }
-
-        UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long userId = userPrincipal.getId();
-
+        
+        // 如果userId为null，使用默认值或记录警告
+        if (userId == null) {
+            logger.warn("User ID is null, using default system user ID");
+            userId = 1L; // 假设1是系统用户ID，根据实际情况调整
+        }
         String platformConvId = responses.stream()
                 .map(CommonChatResponse::getConversationId)
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
-
+        logger.info("测试7");
         String finalAnswer = responses.stream()
                 .map(CommonChatResponse::getAnswer)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining());
-
+        logger.info("测试8");
         if (finalAnswer.isEmpty()) {
             logger.info("AI did not return any content, saving skipped.");
             return;
         }
-
+        logger.info("测试9");
         ConversationDO conversation = new ConversationDO();
         conversation.setAppId(appConfig.getId());
         conversation.setAppCode(appConfig.getAppCode());
@@ -109,7 +132,7 @@ public class ChatService {
         ConversationDO savedConversation = conversationDORepository.save(conversation);
         Long internalConvId = savedConversation.getId();
         logger.info("New conversation saved with internal ID: {} and platform ID: {}", internalConvId, platformConvId);
-
+        logger.info("测试10");
         MessageDO userMessage = new MessageDO();
         userMessage.setConversationId(internalConvId);
         userMessage.setRole("user");
@@ -121,7 +144,7 @@ public class ChatService {
         assistantMessage.setConversationId(internalConvId);
         assistantMessage.setRole("assistant");
         assistantMessage.setContent(finalAnswer);
-
+        logger.info("测试11");
         int promptTokens = responses.stream().mapToInt(CommonChatResponse::getPromptTokens).sum();
         int completionTokens = responses.stream().mapToInt(CommonChatResponse::getCompletionTokens).sum();
         assistantMessage.setPromptTokens(promptTokens);

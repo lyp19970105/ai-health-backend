@@ -1,20 +1,21 @@
 package com.example.healthmonitoring.controller;
 
-import com.example.healthmonitoring.dto.auth.JwtAuthenticationResponse;
+import com.example.healthmonitoring.dto.auth.AuthenticationResponse;
 import com.example.healthmonitoring.dto.auth.LoginRequest;
 import com.example.healthmonitoring.dto.auth.RegisterRequest;
+import com.example.healthmonitoring.model.domain.UserDO;
+import com.example.healthmonitoring.security.UserPrincipal;
 import com.example.healthmonitoring.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.web.bind.annotation.*;
 
-/**
- * 认证控制器
- * 负责处理用户的注册和登录请求
- */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -22,29 +23,56 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-    /**
-     * 用户登录接口
-     * @param loginRequest 包含用户名和密码的登录请求体
-     * @return 如果认证成功，返回包含JWT的响应实体
-     */
+    // 注入我们在SecurityConfig中定义的仓库
+    @Autowired
+    private SecurityContextRepository securityContextRepository;
+
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
-        // 调用认证服务处理用户登录逻辑
-        String jwt = authService.authenticateUser(loginRequest);
-        // 将生成的JWT包装在JwtAuthenticationResponse中返回给客户端
-        return ResponseEntity.ok(new JwtAuthenticationResponse(jwt));
+    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
+        // 1. 让AuthService负责认证，返回一个完整的Authentication对象
+        Authentication authentication = authService.authenticateUser(loginRequest);
+
+        // 2. 创建一个新的、干净的SecurityContext
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        // 3. 将认证成功后的Authentication对象放进去
+        context.setAuthentication(authentication);
+        // 4. 将这个新的Context设置到全局的SecurityContextHolder中
+        SecurityContextHolder.setContext(context);
+
+        // 5. 【最关键的一步】明确地调用仓库，强制将会话信息保存到数据库
+        securityContextRepository.saveContext(context, request, response);
+
+        // 6. 构造并返回成功的响应
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        AuthenticationResponse authResponse = new AuthenticationResponse(
+            userPrincipal.getUsername(),
+            userPrincipal.getNickname(),
+            true,
+            "登录成功"
+        );
+        return ResponseEntity.ok(authResponse);
     }
 
-    /**
-     * 用户注册接口
-     * @param registerRequest 包含用户名、昵称和密码的注册请求体
-     * @return 如果注册成功，返回成功的响应实体
-     */
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegisterRequest registerRequest) {
-        // 调用认证服务处理用户注册逻辑
-        authService.registerUser(registerRequest);
-        // 返回一个简单的成功消息
-        return ResponseEntity.ok("User registered successfully!");
+        UserDO user = authService.registerUser(registerRequest);
+        return ResponseEntity.ok("用户注册成功！");
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        // 如果用户已登录，Spring Security会自动注入有效的Authentication对象
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return ResponseEntity.ok(new AuthenticationResponse(null, null, false, "未登录"));
+        }
+
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        AuthenticationResponse response = new AuthenticationResponse(
+            userPrincipal.getUsername(),
+            userPrincipal.getNickname(),
+            true,
+            "已登录"
+        );
+        return ResponseEntity.ok(response);
     }
 }

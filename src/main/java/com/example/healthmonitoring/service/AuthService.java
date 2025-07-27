@@ -1,10 +1,11 @@
 package com.example.healthmonitoring.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.example.healthmonitoring.dto.auth.LoginRequest;
 import com.example.healthmonitoring.dto.auth.RegisterRequest;
 import com.example.healthmonitoring.model.domain.UserDO;
 import com.example.healthmonitoring.repository.UserRepository;
-import com.example.healthmonitoring.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class AuthService {
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -29,27 +31,30 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private JwtTokenProvider tokenProvider;
-
     /**
      * 认证用户
      * @param loginRequest 包含用户名和密码的登录请求
-     * @return 生成的JWT
+     * @return 认证对象
      */
-    public String authenticateUser(LoginRequest loginRequest) {
-        // 使用AuthenticationManager进行用户认证
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
-                        loginRequest.getPassword()
-                )
-        );
+    public Authentication authenticateUser(LoginRequest loginRequest) {
+        logger.info("用户登录尝试: username={}", loginRequest.getUsername());
+        try {
+            // 使用AuthenticationManager进行用户认证
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getUsername(),
+                            loginRequest.getPassword()
+                    )
+            );
 
-        // 将认证信息设置到SecurityContext中
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        // 生成JWT并返回
-        return tokenProvider.generateToken(authentication);
+            // 将认证信息设置到SecurityContext中
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            logger.info("用户登录成功: username={}", loginRequest.getUsername());
+            return authentication;
+        } catch (Exception e) {
+            logger.error("用户登录失败: username={}, error={}", loginRequest.getUsername(), e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -58,9 +63,13 @@ public class AuthService {
      * @return 保存到数据库的用户实体
      */
     public UserDO registerUser(RegisterRequest registerRequest) {
+        logger.info("用户注册尝试: username={}, nickname={}", 
+            registerRequest.getUsername(), registerRequest.getNickname());
+        
         // 检查用户名是否已存在
         if (userRepository.existsByUsername(registerRequest.getUsername())) {
-            throw new RuntimeException("Username is already taken!");
+            logger.warn("用户名已存在: username={}", registerRequest.getUsername());
+            throw new RuntimeException("用户名已被使用！");
         }
 
         // 创建新的用户实体
@@ -71,6 +80,9 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
 
         // 保存用户到数据库
-        return userRepository.save(user);
+        UserDO savedUser = userRepository.save(user);
+        logger.info("用户注册成功: username={}, userId={}", 
+            savedUser.getUsername(), savedUser.getId());
+        return savedUser;
     }
 }

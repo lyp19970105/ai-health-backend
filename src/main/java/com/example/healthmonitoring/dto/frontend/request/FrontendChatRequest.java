@@ -1,12 +1,17 @@
 package com.example.healthmonitoring.dto.frontend.request;
 
-public class FrontendChatRequest {
+import com.example.healthmonitoring.dto.common.CommonRequest;
+
+public class FrontendChatRequest extends CommonRequest {
     private String appCode;
     private String userInput;
     private String model;
     private String conversationId;
     // 可选，用于连续对话
 
+    public FrontendChatRequest() {
+        // Jackson需要一个无参数的构造函数
+    }
 
     public FrontendChatRequest(String appCode, String userInput, String model, String conversationId) {
         this.appCode = appCode;
