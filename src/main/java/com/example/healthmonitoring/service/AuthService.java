@@ -37,7 +37,6 @@ public class AuthService {
      * @return 认证对象
      */
     public Authentication authenticateUser(LoginRequest loginRequest) {
-        logger.info("用户登录尝试: username={}", loginRequest.getUsername());
         try {
             // 使用AuthenticationManager进行用户认证
             Authentication authentication = authenticationManager.authenticate(
@@ -49,7 +48,6 @@ public class AuthService {
 
             // 将认证信息设置到SecurityContext中
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            logger.info("用户登录成功: username={}", loginRequest.getUsername());
             return authentication;
         } catch (Exception e) {
             logger.error("用户登录失败: username={}, error={}", loginRequest.getUsername(), e.getMessage());

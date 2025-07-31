@@ -1,4 +1,4 @@
-package com.example.healthmonitoring.model.domain;
+package com.example.healthmonitoring.enums;
 
 /**
  * 用户角色枚举

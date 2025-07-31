@@ -32,7 +32,6 @@ public class ChatController {
         RequestHelper.fillUserInfo(chatRequest, currentUser);
         return chatService.streamChat(chatRequest)
                 .map(chunk -> {
-                    logger.info("测试11");
                     return chunk;
                 });
     }

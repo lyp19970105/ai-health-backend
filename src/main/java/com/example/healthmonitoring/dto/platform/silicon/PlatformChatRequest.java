@@ -7,7 +7,7 @@ import java.util.List;
 
 public class PlatformChatRequest {
     private String model;
-    private List<ChatMessage> messages;
+
     private boolean stream;
 
     @JsonProperty("max_tokens")
@@ -35,6 +35,8 @@ public class PlatformChatRequest {
 
     private Integer n;
     private List<String> stop;
+
+    private List<ChatMessage> messages;
 
     public PlatformChatRequest(String model, List<ChatMessage> messages, boolean stream, Integer maxTokens, Boolean enableThinking, Integer thinkingBudget, Double minP, Double temperature, Double topP, Integer topK, Double frequencyPenalty, Integer n, List<String> stop) {
         this.model = model;

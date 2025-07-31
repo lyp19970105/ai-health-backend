@@ -2,9 +2,9 @@ package com.example.healthmonitoring.dto.chat;
 
 public class ChatMessage {
     private String role;
-    private String content;
+    private Object content;
 
-    public ChatMessage(String role, String content) {
+    public ChatMessage(String role, Object content) {
         this.role = role;
         this.content = content;
     }
@@ -18,11 +18,11 @@ public class ChatMessage {
         this.role = role;
     }
 
-    public String getContent() {
+    public Object getContent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(Object content) {
         this.content = content;
     }
 }

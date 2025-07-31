@@ -3,6 +3,8 @@ package com.example.healthmonitoring.service;
 import com.example.healthmonitoring.client.DifyClient;
 import com.example.healthmonitoring.client.SiliconFlowClient;
 import com.example.healthmonitoring.dto.frontend.request.FrontendChatRequest;
+import com.example.healthmonitoring.dto.frontend.request.VlmChatRequest;
+import com.example.healthmonitoring.dto.frontend.request.VlmChatUrlRequest;
 import com.example.healthmonitoring.dto.frontend.response.ChatResponse;
 import com.example.healthmonitoring.dto.platform.CommonChatResponse;
 import com.example.healthmonitoring.enums.Platform;
@@ -21,9 +23,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -85,10 +90,61 @@ public class ChatService {
                 .doOnNext(capturedResponses::add)
                 .doOnTerminate(() -> {
                     self.saveFullConversation(frontendRequest, appConfig, capturedResponses, finalUserId);
-                    logger.info("测试12");
+                    
                 })
                 .map(commonResponse -> {
-                    logger.info("测试13");
+                    
+                    ChatResponse response = new ChatResponse();
+                    response.setConversationId(commonResponse.getConversationId());
+                    response.setAnswer(commonResponse.getAnswer());
+                    return response;
+                });
+    }
+
+    public Flux<ChatResponse> streamVlmChat(VlmChatRequest vlmRequest) {
+        LlmAppConfigDO appConfig = llmAppConfigRepository.findByAppCode(vlmRequest.getAppCode())
+                .orElseThrow(() -> new RuntimeException("App not found: " + vlmRequest.getAppCode()));
+
+        Long userId = vlmRequest.getUserId();
+
+        String imageUrlForApi;
+        try {
+            String base64 = Base64.getEncoder().encodeToString(vlmRequest.getImage().getBytes());
+            imageUrlForApi = "data:" + vlmRequest.getImage().getContentType() + ";base64," + base64;
+        } catch (IOException e) {
+            return Flux.error(new RuntimeException("Failed to encode uploaded image", e));
+        }
+
+        return processVlmRequest(vlmRequest.getText(), imageUrlForApi, appConfig, userId);
+    }
+
+    public Flux<ChatResponse> streamVlmChatFromUrl(VlmChatUrlRequest vlmRequest) {
+        LlmAppConfigDO appConfig = llmAppConfigRepository.findByAppCode(vlmRequest.getAppCode())
+                .orElseThrow(() -> new RuntimeException("App not found: " + vlmRequest.getAppCode()));
+
+        Long userId = vlmRequest.getUserId();
+        String imageUrlForApi = vlmRequest.getImageUrl();
+
+        return processVlmRequest(vlmRequest.getText(), imageUrlForApi, appConfig, userId);
+    }
+
+    private Flux<ChatResponse> processVlmRequest(String text, String imageUrl, LlmAppConfigDO appConfig, Long userId) {
+        Flux<CommonChatResponse> commonChatResponseFlux = siliconFlowClient.sendVlmMessageStream(
+                appConfig.getModelName(),
+                text,
+                imageUrl,
+                appConfig.getSystemPrompt()
+        );
+
+        List<CommonChatResponse> capturedResponses = new ArrayList<>();
+        ChatService self = applicationContext.getBean(ChatService.class);
+        return commonChatResponseFlux
+                .doOnNext(capturedResponses::add)
+                .doOnTerminate(() -> {
+                    // TODO: Implement saving logic for VLM conversations
+                    // self.saveVlmConversation(vlmRequest, appConfig, capturedResponses, userId);
+                })
+                .map(commonResponse -> {
                     ChatResponse response = new ChatResponse();
                     response.setConversationId(commonResponse.getConversationId());
                     response.setAnswer(commonResponse.getAnswer());
@@ -113,17 +169,17 @@ public class ChatService {
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
-        logger.info("测试7");
+        
         String finalAnswer = responses.stream()
                 .map(CommonChatResponse::getAnswer)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining());
-        logger.info("测试8");
+        
         if (finalAnswer.isEmpty()) {
             logger.info("AI did not return any content, saving skipped.");
             return;
         }
-        logger.info("测试9");
+        
         ConversationDO conversation = new ConversationDO();
         conversation.setAppId(appConfig.getId());
         conversation.setAppCode(appConfig.getAppCode());
@@ -132,7 +188,7 @@ public class ChatService {
         ConversationDO savedConversation = conversationDORepository.save(conversation);
         Long internalConvId = savedConversation.getId();
         logger.info("New conversation saved with internal ID: {} and platform ID: {}", internalConvId, platformConvId);
-        logger.info("测试10");
+        
         MessageDO userMessage = new MessageDO();
         userMessage.setConversationId(internalConvId);
         userMessage.setRole("user");
@@ -144,7 +200,7 @@ public class ChatService {
         assistantMessage.setConversationId(internalConvId);
         assistantMessage.setRole("assistant");
         assistantMessage.setContent(finalAnswer);
-        logger.info("测试11");
+        
         int promptTokens = responses.stream().mapToInt(CommonChatResponse::getPromptTokens).sum();
         int completionTokens = responses.stream().mapToInt(CommonChatResponse::getCompletionTokens).sum();
         assistantMessage.setPromptTokens(promptTokens);

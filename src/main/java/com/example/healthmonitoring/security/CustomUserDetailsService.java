@@ -32,7 +32,6 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        logger.info(">>> 正在尝试通过数据库加载用户: {}", username);
         // 从数据库中根据用户名查找用户
         UserDO user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username : " + username));
