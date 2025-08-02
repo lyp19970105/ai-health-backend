@@ -2,74 +2,61 @@ package com.example.healthmonitoring.dto.platform.silicon;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
 /**
- * 用于映射从 SiliconCloud API SSE 流接收到的所有事件的 DTO。
- * 使用 @JsonIgnoreProperties(ignoreUnknown = true) 来忽略我们不关心的或在某些事件中不存在的字段。
+ * 用于映射SiliconCloud SSE流中所有事件的通用DTO。
+ * <p>
+ * SiliconCloud的流式API会发送多种类型的事件来表示消息生命周期的不同阶段。
+ * 这个类旨在捕获所有可能事件的字段，通过 {@link JsonIgnoreProperties} 忽略在特定事件中不存在的字段。
+ * <p>
+ * 关键事件类型 (type) 包括:
+ * - "message_start": 消息开始，包含元数据和token使用情况。
+ * - "content_block_start": 内容块开始。
+ * - "content_block_delta": 内容块的增量更新，包含文本片段。
+ * - "content_block_stop": 内容块结束。
+ * - "message_delta": 消息的增量更新，包含停止原因和token使用情况。
+ * - "message_stop": 消息流结束。
  */
+@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SiliconCloudSseEvent {
 
+    /**
+     * 事件的类型。
+     */
     private String type;
+
+    /**
+     * 内容块的索引。
+     */
     private int index;
+
+    /**
+     * "message_start" 事件的载荷。
+     */
     private MessagePayload message;
+
+    /**
+     * "content_block_start" 或 "content_block_delta" 事件的载荷。
+     */
     @JsonProperty("content_block")
     private ContentBlockPayload contentBlock;
+
+    /**
+     * "message_delta" 事件的载荷，包含增量变化。
+     */
     private DeltaPayload delta;
+
+    /**
+     * "message_start" 或 "message_delta" 事件中包含的Token使用量。
+     */
     private UsagePayload usage;
 
-    // Getters and Setters
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public int getIndex() {
-        return index;
-    }
-
-    public void setIndex(int index) {
-        this.index = index;
-    }
-
-    public MessagePayload getMessage() {
-        return message;
-    }
-
-    public void setMessage(MessagePayload message) {
-        this.message = message;
-    }
-
-    public ContentBlockPayload getContentBlock() {
-        return contentBlock;
-    }
-
-    public void setContentBlock(ContentBlockPayload contentBlock) {
-        this.contentBlock = contentBlock;
-    }
-
-    public DeltaPayload getDelta() {
-        return delta;
-    }
-
-    public void setDelta(DeltaPayload delta) {
-        this.delta = delta;
-    }
-
-    public UsagePayload getUsage() {
-        return usage;
-    }
-
-    public void setUsage(UsagePayload usage) {
-        this.usage = usage;
-    }
-
-    // --- Nested Classes for structured data ---
-
+    /**
+     * "message_start" 事件的载荷。
+     */
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class MessagePayload {
         private String id;
@@ -81,90 +68,22 @@ public class SiliconCloudSseEvent {
         @JsonProperty("stop_sequence")
         private String stopSequence;
         private UsagePayload usage;
-
-        // Getters and Setters for MessagePayload
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getRole() {
-            return role;
-        }
-
-        public void setRole(String role) {
-            this.role = role;
-        }
-
-        public String getModel() {
-            return model;
-        }
-
-        public void setModel(String model) {
-            this.model = model;
-        }
-
-        public String getStopReason() {
-            return stopReason;
-        }
-
-        public void setStopReason(String stopReason) {
-            this.stopReason = stopReason;
-        }
-
-        public String getStopSequence() {
-            return stopSequence;
-        }
-
-        public void setStopSequence(String stopSequence) {
-            this.stopSequence = stopSequence;
-        }
-
-        public UsagePayload getUsage() {
-            return usage;
-        }
-
-        public void setUsage(UsagePayload usage) {
-            this.usage = usage;
-        }
     }
 
+    /**
+     * 内容块载荷。
+     */
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ContentBlockPayload {
         private String type;
         private String text;
-
-        // Getters and Setters for ContentBlockPayload
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getText() {
-            return text;
-        }
-
-        public void setText(String text) {
-            this.text = text;
-        }
     }
 
+    /**
+     * 增量变化载荷。
+     */
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class DeltaPayload {
         private String type;
@@ -173,67 +92,17 @@ public class SiliconCloudSseEvent {
         private String stopReason;
         @JsonProperty("stop_sequence")
         private String stopSequence;
-
-        // Getters and Setters for DeltaPayload
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getText() {
-            return text;
-        }
-
-        public void setText(String text) {
-            this.text = text;
-        }
-
-        public String getStopReason() {
-            return stopReason;
-        }
-
-        public void setStopReason(String stopReason) {
-            this.stopReason = stopReason;
-        }
-
-        public String getStopSequence() {
-            return stopSequence;
-        }
-
-        public void setStopSequence(String stopSequence) {
-            this.stopSequence = stopSequence;
-        }
     }
 
+    /**
+     * Token使用量载荷。
+     */
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UsagePayload {
-
         @JsonProperty("output_tokens")
         private int outputTokens;
         @JsonProperty("input_tokens")
         private int inputTokens;
-
-
-        // Getters and Setters for UsagePayload
-
-        public int getInputTokens() {
-            return inputTokens;
-        }
-
-        public void setInputTokens(int inputTokens) {
-            this.inputTokens = inputTokens;
-        }
-
-        public int getOutputTokens() {
-            return outputTokens;
-        }
-
-        public void setOutputTokens(int outputTokens) {
-            this.outputTokens = outputTokens;
-        }
     }
 }

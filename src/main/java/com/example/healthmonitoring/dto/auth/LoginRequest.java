@@ -1,33 +1,25 @@
 package com.example.healthmonitoring.dto.auth;
 
+import lombok.Data;
+
 /**
- * 登录请求的数据传输对象（DTO）
- * 用于封装客户端发送的登录信息
+ * 用户登录请求DTO (Data Transfer Object)。
+ * <p>
+ * 该对象专门用于封装用户在执行登录操作时，从客户端（例如，Web前端）
+ * 发送到服务器的用户凭证信息。
  */
+@Data
 public class LoginRequest {
+
     /**
-     * 用户名
+     * 用户登录时使用的用户名。
      */
     private String username;
+
     /**
-     * 密码
+     * 用户登录时使用的原始密码。
+     * 该密码在传输过程中应通过HTTPS进行加密，在后端接收后会与数据库中存储的哈希值进行比对。
      */
     private String password;
 
-    // Getters and Setters
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
 }

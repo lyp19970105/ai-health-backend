@@ -2,107 +2,79 @@ package com.example.healthmonitoring.dto.platform.dify;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
+/**
+ * Dify流式响应（SSE）事件DTO。
+ * <p>
+ * 该对象用于反序列化从Dify的流式聊天接口接收到的每一条Server-Sent Event (SSE)数据。
+ * 它能够处理多种事件类型，并提取核心数据如回答、会话ID以及Token使用量等元数据。
+ */
+@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DifySseEvent {
 
+    /**
+     * 事件类型 (e.g., "message", "message_end")。
+     */
     private String event;
+
+    /**
+     * AI生成的回复文本片段。
+     */
     private String answer;
 
+    /**
+     * Dify平台生成的消息ID。
+     */
     @JsonProperty("message_id")
     private String difyMessageId;
 
+    /**
+     * Dify平台返回的会话ID。
+     */
     @JsonProperty("conversation_id")
     private String difyConversationId;
 
+    /**
+     * 事件相关的元数据，通常在 "message_end" 事件中出现。
+     */
     private Metadata metadata;
 
-    // Getters and Setters
-
-    public String getEvent() {
-        return event;
-    }
-
-    public void setEvent(String event) {
-        this.event = event;
-    }
-
-    public String getAnswer() {
-        return answer;
-    }
-
-    public void setAnswer(String answer) {
-        this.answer = answer;
-    }
-
-    public String getDifyMessageId() {
-        return difyMessageId;
-    }
-
-    public void setDifyMessageId(String difyMessageId) {
-        this.difyMessageId = difyMessageId;
-    }
-
-    public String getDifyConversationId() {
-        return difyConversationId;
-    }
-
-    public void setDifyConversationId(String difyConversationId) {
-        this.difyConversationId = difyConversationId;
-    }
-
-    public Metadata getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(Metadata metadata) {
-        this.metadata = metadata;
-    }
-
+    /**
+     * 元数据容器。
+     */
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Metadata {
+        /**
+         * Token使用量详情。
+         */
         private Usage usage;
-
-        public Usage getUsage() {
-            return usage;
-        }
-
-        public void setUsage(Usage usage) {
-            this.usage = usage;
-        }
     }
 
+    /**
+     * Token使用量DTO。
+     */
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Usage {
+        /**
+         * 输入提示消耗的Token数。
+         */
         @JsonProperty("prompt_tokens")
         private int promptTokens;
+
+        /**
+         * 生成回答消耗的Token数。
+         */
         @JsonProperty("completion_tokens")
         private int completionTokens;
+
+        /**
+         * 总消耗的Token数。
+         */
         @JsonProperty("total_tokens")
         private int totalTokens;
-
-        public int getPromptTokens() {
-            return promptTokens;
-        }
-
-        public void setPromptTokens(int promptTokens) {
-            this.promptTokens = promptTokens;
-        }
-
-        public int getCompletionTokens() {
-            return completionTokens;
-        }
-
-        public void setCompletionTokens(int completionTokens) {
-            this.completionTokens = completionTokens;
-        }
-
-        public int getTotalTokens() {
-            return totalTokens;
-        }
-
-        public void setTotalTokens(int totalTokens) {
-            this.totalTokens = totalTokens;
-        }
     }
 }

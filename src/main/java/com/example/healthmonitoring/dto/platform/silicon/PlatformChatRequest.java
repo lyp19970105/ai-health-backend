@@ -2,16 +2,86 @@ package com.example.healthmonitoring.dto.platform.silicon;
 
 import com.example.healthmonitoring.dto.chat.ChatMessage;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * 平台通用聊天请求DTO（类OpenAI格式）。
+ * <p>
+ * 该对象用于构建发送到与OpenAI API兼容的聊天接口（如SiliconFlow）的请求体。
+ * 它封装了模型名称、消息历史以及一系列用于控制模型生成行为的参数。
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PlatformChatRequest {
+
+    /**
+     * 要使用的模型ID。
+     */
     private String model;
 
+    /**
+     * 包含迄今为止对话内容的消息列表。
+     *
+     * @see ChatMessage
+     */
+    private List<ChatMessage> messages;
+
+    /**
+     * 是否使用流式响应。
+     * <p>
+     * 如果为true，将通过Server-Sent Events (SSE)增量返回内容。
+     */
     private boolean stream;
 
+    /**
+     * 生成文本的最大Token数。
+     */
     @JsonProperty("max_tokens")
     private Integer maxTokens;
+
+    /**
+     * 控制模型输出的随机性。
+     * <p>
+     * 较低的值（如0.2）使输出更具确定性，较高的值（如0.8）使其更随机。
+     */
+    private Double temperature;
+
+    /**
+     * 一种替代temperature的采样方法，称为核采样。
+     * <p>
+     * 模型会考虑概率质量加起来为 top_p 的token。例如，0.1意味着只考虑构成前10%概率质量的token。
+     */
+    @JsonProperty("top_p")
+    private Double topP;
+
+    /**
+     * 为每个位置的token生成多少个选择（completion）。
+     * <p>
+     * 默认为1。因为会消耗大量token，所以通常保持为1。
+     */
+    private Integer n;
+
+    /**
+     * 一个或多个停止序列。
+     * <p>
+     * 当模型生成这些序列时，会立即停止进一步生成token。
+     */
+    private List<String> stop;
+
+    // 以下是SiliconFlow特有或不常用的参数，同样提供文档
+
+    @JsonProperty("top_k")
+    private Integer topK;
+
+    @JsonProperty("frequency_penalty")
+    private Double frequencyPenalty;
 
     @JsonProperty("enable_thinking")
     private Boolean enableThinking;
@@ -21,141 +91,4 @@ public class PlatformChatRequest {
 
     @JsonProperty("min_p")
     private Double minP;
-
-    private Double temperature;
-
-    @JsonProperty("top_p")
-    private Double topP;
-
-    @JsonProperty("top_k")
-    private Integer topK;
-
-    @JsonProperty("frequency_penalty")
-    private Double frequencyPenalty;
-
-    private Integer n;
-    private List<String> stop;
-
-    private List<ChatMessage> messages;
-
-    public PlatformChatRequest(String model, List<ChatMessage> messages, boolean stream, Integer maxTokens, Boolean enableThinking, Integer thinkingBudget, Double minP, Double temperature, Double topP, Integer topK, Double frequencyPenalty, Integer n, List<String> stop) {
-        this.model = model;
-        this.messages = messages;
-        this.stream = stream;
-        this.maxTokens = maxTokens;
-        this.enableThinking = enableThinking;
-        this.thinkingBudget = thinkingBudget;
-        this.minP = minP;
-        this.temperature = temperature;
-        this.topP = topP;
-        this.topK = topK;
-        this.frequencyPenalty = frequencyPenalty;
-        this.n = n;
-        this.stop = stop;
-    }
-
-    // Getters and Setters
-    public String getModel() {
-        return model;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public List<ChatMessage> getMessages() {
-        return messages;
-    }
-
-    public void setMessages(List<ChatMessage> messages) {
-        this.messages = messages;
-    }
-
-    public boolean isStream() {
-        return stream;
-    }
-
-    public void setStream(boolean stream) {
-        this.stream = stream;
-    }
-
-    public Integer getMaxTokens() {
-        return maxTokens;
-    }
-
-    public void setMaxTokens(Integer maxTokens) {
-        this.maxTokens = maxTokens;
-    }
-
-    public Boolean getEnableThinking() {
-        return enableThinking;
-    }
-
-    public void setEnableThinking(Boolean enableThinking) {
-        this.enableThinking = enableThinking;
-    }
-
-    public Integer getThinkingBudget() {
-        return thinkingBudget;
-    }
-
-    public void setThinkingBudget(Integer thinkingBudget) {
-        this.thinkingBudget = thinkingBudget;
-    }
-
-    public Double getMinP() {
-        return minP;
-    }
-
-    public void setMinP(Double minP) {
-        this.minP = minP;
-    }
-
-    public Double getTemperature() {
-        return temperature;
-    }
-
-    public void setTemperature(Double temperature) {
-        this.temperature = temperature;
-    }
-
-    public Double getTopP() {
-        return topP;
-    }
-
-    public void setTopP(Double topP) {
-        this.topP = topP;
-    }
-
-    public Integer getTopK() {
-        return topK;
-    }
-
-    public void setTopK(Integer topK) {
-        this.topK = topK;
-    }
-
-    public Double getFrequencyPenalty() {
-        return frequencyPenalty;
-    }
-
-    public void setFrequencyPenalty(Double frequencyPenalty) {
-        this.frequencyPenalty = frequencyPenalty;
-    }
-
-    public Integer getN() {
-        return n;
-    }
-
-    public void setN(Integer n) {
-        this.n = n;
-    }
-
-    public List<String> getStop() {
-        return stop;
-    }
-
-    public void setStop(List<String> stop) {
-        this.stop = stop;
-    }
 }
