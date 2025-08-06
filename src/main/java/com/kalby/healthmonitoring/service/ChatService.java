@@ -168,9 +168,14 @@ public class ChatService {
         return commonChatResponseFlux
                 .doOnNext(capturedResponses::add)
                 .doOnTerminate(() -> {
-                    // TODO: 实现 VLM 对话的保存逻辑
-                    log.info("[VLM聊天] 流结束，捕获到 {} 个响应片段。准备保存...", capturedResponses.size());
-                    // self.saveVlmConversation(vlmRequest, appConfig, capturedResponses, userId);
+                    log.info("[VLM聊天] 流结束，捕获到 {} 个响应片段。准备复用现有逻辑进行保存...", capturedResponses.size());
+                    // 为了复用 saveFullConversation，我们需要构建一个 FrontendChatRequest
+                    FrontendChatRequest textRequest = new FrontendChatRequest();
+                    textRequest.setAppCode(appConfig.getAppCode());
+                    textRequest.setText(text); // 只包含纯文本
+                    textRequest.setUserId(userId);
+                    // 注意：VLM聊天通常是无状态的，不依赖前端传入的conversationId，所以这里可以不设置
+                    self.saveFullConversation(textRequest, appConfig, capturedResponses, userId);
                 })
                 .map(commonResponse -> {
                     ChatResponse response = new ChatResponse();

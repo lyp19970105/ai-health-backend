@@ -10,6 +10,7 @@ import com.kalby.healthmonitoring.dto.platform.silicon.SiliconCloudSseEvent;
 import com.kalby.healthmonitoring.dto.platform.silicon.SiliconVlmSseChunk;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -127,7 +128,9 @@ public class SiliconFlowClient {
 
         // 1. 构建符合 OpenAI VLM 格式的消息体
         List<Object> content = new ArrayList<>();
-        content.add(new ImageContent(new ImageUrl(imageUrl, "auto")));
+        if(!StringUtils.isEmpty(imageUrl)){
+            content.add(new ImageContent(new ImageUrl(imageUrl, "auto")));
+        }
         content.add(new TextContent(text));
 
         List<ChatMessage> messages = new ArrayList<>();

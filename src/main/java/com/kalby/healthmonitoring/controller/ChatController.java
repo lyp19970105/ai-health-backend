@@ -102,7 +102,7 @@ public class ChatController {
                         log.error("VLM (文件上传) 流式聊天发生错误", e);
                         return Flux.just(BaseResponse.error(ErrorCode.OPERATION_ERROR, e.getMessage()));
                     });
-        } else if (isUrlRequest) {
+        } else {
             // --- 图片 URL 逻辑 ---
             VlmChatUrlRequest chatRequest = new VlmChatUrlRequest();
             chatRequest.setImageUrl(request.getImageUrl());
@@ -118,9 +118,6 @@ public class ChatController {
                         log.error("VLM (URL) 流式聊天发生错误", e);
                         return Flux.just(BaseResponse.error(ErrorCode.OPERATION_ERROR, e.getMessage()));
                     });
-        } else {
-            // 两种图片来源都未提供，此为非法请求
-            throw new BusinessException(ErrorCode.VLM_REQUEST_ERROR, "必须提供图片文件或图片URL");
         }
     }
 }
