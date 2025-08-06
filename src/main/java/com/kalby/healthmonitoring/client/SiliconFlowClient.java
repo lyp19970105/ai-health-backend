@@ -132,7 +132,7 @@ public class SiliconFlowClient {
 
         List<ChatMessage> messages = new ArrayList<>();
         // 注意：某些VLM模型可能不支持 system prompt，这里暂时注释掉
-        // messages.add(new ChatMessage("system", systemPrompt));
+        messages.add(new ChatMessage("system", systemPrompt));
         messages.add(new ChatMessage("user", content));
 
         PlatformChatRequest apiRequest = new PlatformChatRequest(model, messages, true, 2048, true, 4096, 0.05, 0.7, 0.7, 50, 0.5, 1, Collections.emptyList());

@@ -46,6 +46,7 @@ public class AppManagementService {
         return new AppConfigResponse(
                 appConfig.getAppCode(),
                 appConfig.getAppName(),
+                appConfig.getModelType(),
                 appConfig.getModelName(),
                 appConfig.getPlatform(),
                 appConfig.getCreatedAt(),

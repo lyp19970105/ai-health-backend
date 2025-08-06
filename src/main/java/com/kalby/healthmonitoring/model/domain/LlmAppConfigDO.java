@@ -1,5 +1,6 @@
 package com.kalby.healthmonitoring.model.domain;
 
+import com.kalby.healthmonitoring.enums.ModelType;
 import com.kalby.healthmonitoring.enums.Platform;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -17,6 +18,10 @@ public class LlmAppConfigDO {
 
     @Column(name = "app_name", nullable = false)
     private String appName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "model_type", nullable = false)
+    private ModelType modelType;
 
     @Column(name = "model_name", nullable = false)
     private String modelName;
@@ -74,6 +79,14 @@ public class LlmAppConfigDO {
 
     public void setAppName(String appName) {
         this.appName = appName;
+    }
+
+    public ModelType getModelType() {
+        return modelType;
+    }
+
+    public void setModelType(ModelType modelType) {
+        this.modelType = modelType;
     }
 
     public String getModelName() {

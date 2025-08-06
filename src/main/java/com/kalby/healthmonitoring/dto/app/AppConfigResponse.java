@@ -1,5 +1,6 @@
 package com.kalby.healthmonitoring.dto.app;
 
+import com.kalby.healthmonitoring.enums.ModelType;
 import com.kalby.healthmonitoring.enums.Platform;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,11 +25,13 @@ public class AppConfigResponse {
      */
     private String appCode;
 
-    /**
-     * 应用的名称。
-     * 用于在界面上展示，方便用户识别。
-     */
     private String appName;
+
+    /**
+     * AI模型的类型。
+     * 用于前端判断该应用是纯文本还是多模态，以渲染不同UI。
+     */
+    private ModelType modelType;
 
     /**
      * 应用绑定的具体AI模型名称。

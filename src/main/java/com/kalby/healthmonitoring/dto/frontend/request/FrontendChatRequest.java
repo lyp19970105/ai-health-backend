@@ -24,7 +24,7 @@ public class FrontendChatRequest extends CommonRequest {
     /**
      * 用户在聊天界面输入的文本内容。
      */
-    private String userInput;
+    private String text;
 
     /**
      * 目标大语言模型的名称。

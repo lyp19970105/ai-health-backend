@@ -81,9 +81,9 @@ public class ChatService {
 
         Flux<CommonChatResponse> commonChatResponseFlux;
         if (appConfig.getPlatform() == Platform.DIFY) {
-            commonChatResponseFlux = difyClient.sendMessageStream(appConfig.getApiKey(), frontendRequest.getUserInput(), frontendRequest.getConversationId());
+            commonChatResponseFlux = difyClient.sendMessageStream(appConfig.getApiKey(), frontendRequest.getText(), frontendRequest.getConversationId());
         } else if (appConfig.getPlatform() == Platform.SILICON_FLOW) {
-            commonChatResponseFlux = siliconFlowClient.sendMessageStream(appConfig.getModelName(), frontendRequest.getUserInput(), appConfig.getSystemPrompt());
+            commonChatResponseFlux = siliconFlowClient.sendMessageStream(appConfig.getModelName(), frontendRequest.getText(), appConfig.getSystemPrompt());
         } else {
             return Flux.error(new BusinessException(ErrorCode.SYSTEM_ERROR, "未知的 AI 平台类型: " + appConfig.getPlatform()));
         }
@@ -235,7 +235,7 @@ public class ChatService {
         MessageDO userMessage = new MessageDO();
         userMessage.setConversationId(internalConvId);
         userMessage.setRole("user");
-        userMessage.setContent(request.getUserInput());
+        userMessage.setContent(request.getText());
         messageDORepository.save(userMessage);
         log.info("[对话保存] 用户消息已保存，会话ID: {}", internalConvId);
 
