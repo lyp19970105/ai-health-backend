@@ -14,7 +14,7 @@ public class MessageDO {
     private Long id;
 
     @Column(name = "conversation_id", nullable = false)
-    private Long conversationId;
+    private String conversationId;
 
     @Column(nullable = false)
     private String role; // e.g., "user", "assistant"
@@ -45,11 +45,11 @@ public class MessageDO {
         this.id = id;
     }
 
-    public Long getConversationId() {
+    public String getConversationId() {
         return conversationId;
     }
 
-    public void setConversationId(Long conversationId) {
+    public void setConversationId(String conversationId) {
         this.conversationId = conversationId;
     }
 

@@ -2,6 +2,7 @@ package com.kalby.healthmonitoring.service;
 
 import com.kalby.healthmonitoring.client.DifyClient;
 import com.kalby.healthmonitoring.client.SiliconFlowClient;
+import com.kalby.healthmonitoring.dto.chat.ChatMessage;
 import com.kalby.healthmonitoring.dto.frontend.request.FrontendChatRequest;
 import com.kalby.healthmonitoring.dto.frontend.request.VlmChatRequest;
 import com.kalby.healthmonitoring.dto.frontend.request.VlmChatUrlRequest;
@@ -17,6 +18,7 @@ import com.kalby.healthmonitoring.repository.ConversationDORepository;
 import com.kalby.healthmonitoring.repository.LlmAppConfigRepository;
 import com.kalby.healthmonitoring.repository.MessageDORepository;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ import reactor.core.publisher.Flux;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -78,12 +81,16 @@ public class ChatService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ERROR, "找不到对应的应用配置：" + frontendRequest.getAppCode()));
 
         final Long userId = frontendRequest.getUserId();
+        final String conversationId = frontendRequest.getConversationId();
 
         Flux<CommonChatResponse> commonChatResponseFlux;
         if (appConfig.getPlatform() == Platform.DIFY) {
-            commonChatResponseFlux = difyClient.sendMessageStream(appConfig.getApiKey(), frontendRequest.getText(), frontendRequest.getConversationId());
+            // Dify 通过 API 的 conversation_id 自行管理上下文，我们只需透传
+            commonChatResponseFlux = difyClient.sendMessageStream(appConfig.getApiKey(), frontendRequest.getText(), conversationId);
         } else if (appConfig.getPlatform() == Platform.SILICON_FLOW) {
-            commonChatResponseFlux = siliconFlowClient.sendMessageStream(appConfig.getModelName(), frontendRequest.getText(), appConfig.getSystemPrompt());
+            // SiliconFlow 是无状态的，需要我们手动加载历史记录并传入
+            List<ChatMessage> history = loadHistoryMessages(conversationId);
+            commonChatResponseFlux = siliconFlowClient.sendMessageStream(appConfig.getModelName(), frontendRequest.getText(), appConfig.getSystemPrompt(), history);
         } else {
             return Flux.error(new BusinessException(ErrorCode.SYSTEM_ERROR, "未知的 AI 平台类型: " + appConfig.getPlatform()));
         }
@@ -130,7 +137,7 @@ public class ChatService {
             return Flux.error(new BusinessException(ErrorCode.OPERATION_ERROR, "图片编码失败，请稍后重试。"));
         }
 
-        return processVlmRequest(vlmRequest.getText(), imageUrlForApi, appConfig, vlmRequest.getUserId());
+        return processVlmRequest(vlmRequest.getText(), imageUrlForApi, appConfig, vlmRequest.getUserId(), vlmRequest.getConversationId());
     }
 
     /**
@@ -143,24 +150,29 @@ public class ChatService {
         LlmAppConfigDO appConfig = llmAppConfigRepository.findByAppCode(vlmRequest.getAppCode())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ERROR, "找不到对应的应用配置：" + vlmRequest.getAppCode()));
 
-        return processVlmRequest(vlmRequest.getText(), vlmRequest.getImageUrl(), appConfig, vlmRequest.getUserId());
+        return processVlmRequest(vlmRequest.getText(), vlmRequest.getImageUrl(), appConfig, vlmRequest.getUserId(), vlmRequest.getConversationId());
     }
 
     /**
      * VLM 请求的通用处理逻辑。
      *
-     * @param text       用户输入的文本。
-     * @param imageUrl   图片的 URL (可以是 http 链接或 Data URL)。
-     * @param appConfig  应用配置。
-     * @param userId     用户ID。
+     * @param text           用户输入的文本。
+     * @param imageUrl       图片的 URL (可以是 http 链接或 Data URL)。
+     * @param appConfig      应用配置。
+     * @param userId         用户ID。
+     * @param conversationId 会话ID。
      * @return 包含聊天响应的 Flux 流。
      */
-    private Flux<ChatResponse> processVlmRequest(String text, String imageUrl, LlmAppConfigDO appConfig, Long userId) {
+    private Flux<ChatResponse> processVlmRequest(String text, String imageUrl, LlmAppConfigDO appConfig, Long userId, String conversationId) {
+        // 对于 VLM，目前只支持 SiliconFlow，它需要手动传入历史记录
+        List<ChatMessage> history = loadHistoryMessages(conversationId);
+
         Flux<CommonChatResponse> commonChatResponseFlux = siliconFlowClient.sendVlmMessageStream(
                 appConfig.getModelName(),
                 text,
                 imageUrl,
-                appConfig.getSystemPrompt()
+                appConfig.getSystemPrompt(),
+                history
         );
 
         List<CommonChatResponse> capturedResponses = new ArrayList<>();
@@ -186,6 +198,36 @@ public class ChatService {
     }
 
     /**
+     * 根据会话ID加载历史消息记录。
+     *
+     * @param conversationId 内部会话ID。
+     * @return 格式化为 ChatMessage 对象的列表。
+     */
+    private List<ChatMessage> loadHistoryMessages(String conversationId) {
+        if (StringUtils.isBlank(conversationId)) {
+            return Collections.emptyList();
+        }
+        try {
+            List<MessageDO> messageDOs = messageDORepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+
+            log.info("[历史加载] 成功为会话ID {} 加载了 {} 条历史消息。", conversationId, messageDOs.size());
+
+            // 将数据库实体 MessageDO 转换为平台客户端需要的 ChatMessage DTO
+            return messageDOs.stream()
+                    .map(messageDO -> {
+                        // 普通文本消息
+                        return new ChatMessage(messageDO.getRole(), messageDO.getContent());
+                    })
+                    .collect(Collectors.toList());
+
+        } catch (NumberFormatException e) {
+            log.warn("[历史加载] 无效的会话ID格式: {}", conversationId);
+            return Collections.emptyList();
+        }
+    }
+
+
+    /**
      * 以新事务保存完整的对话记录。
      * <p>
      * 使用 `Propagation.REQUIRES_NEW` 是为了确保无论外部调用是否在事务中，
@@ -204,9 +246,13 @@ public class ChatService {
             return;
         }
 
+        // 为 userId 设置一个最终的、不可变的值，以供后续的 lambda 表达式使用
+        final Long finalUserId;
         if (userId == null) {
             log.warn("[对话保存] 未获取到用户信息，将使用系统默认用户ID进行保存。");
-            userId = 1L; // 假设1是系统用户ID，这是一个兜底策略。
+            finalUserId = 1L; // 假设1是系统用户ID，这是一个兜底策略。
+        } else {
+            finalUserId = userId;
         }
 
         // 从响应流中提取平台会话ID和最终的完整答案。
@@ -226,15 +272,25 @@ public class ChatService {
             return;
         }
 
-        // 1. 创建并保存会话主记录
-        ConversationDO conversation = new ConversationDO();
-        conversation.setAppId(appConfig.getId());
-        conversation.setAppCode(appConfig.getAppCode());
-        conversation.setPlatformConversationId(platformConvId);
-        conversation.setUserId(userId);
+        // 1. 正确处理会话：查找或创建
+        ConversationDO conversation;
+        String conversationIdStr = request.getConversationId();
+        if (StringUtils.isNotBlank(conversationIdStr)) {
+            // 如果有ID，尝试查找
+            Long conversationId = Long.parseLong(conversationIdStr);
+            conversation = conversationDORepository.findById(conversationId)
+                    .orElseGet(() -> {
+                        // 如果找不到，记录警告并创建一个新的作为兜底
+                        log.warn("[对话保存] 提供了会话ID {}，但在数据库中未找到。将创建新会话。", conversationId);
+                        return createNewConversation(appConfig, finalUserId, platformConvId);
+                    });
+        } else {
+            // 如果没有ID，创建新的
+            conversation = createNewConversation(appConfig, finalUserId, platformConvId);
+        }
         ConversationDO savedConversation = conversationDORepository.save(conversation);
-        Long internalConvId = savedConversation.getId();
-        log.info("[对话保存] 新建会话，内部ID: {}, 平台ID: {}", internalConvId, platformConvId);
+        String internalConvId = savedConversation.getPlatformConversationId();
+
 
         // 2. 保存用户消息
         MessageDO userMessage = new MessageDO();
@@ -258,5 +314,15 @@ public class ChatService {
 
         messageDORepository.save(assistantMessage);
         log.info("[对话保存] AI消息已保存，会话ID: {}, 总Token数: {}", internalConvId, assistantMessage.getTotalTokens());
+    }
+
+    private ConversationDO createNewConversation(LlmAppConfigDO appConfig, Long userId, String platformConvId) {
+        ConversationDO conversation = new ConversationDO();
+        conversation.setAppId(appConfig.getId());
+        conversation.setAppCode(appConfig.getAppCode());
+        conversation.setPlatformConversationId(platformConvId);
+        conversation.setUserId(userId);
+        log.info("[对话保存] 正在创建新会话，AppCode: {}, 用户ID: {}", appConfig.getAppCode(), userId);
+        return conversation;
     }
 }

@@ -67,7 +67,7 @@ public class ConversationService {
                 generateConversationTitle(conversation), // 使用一个方法来生成标题
                 conversation.getCreatedAt(),
                 conversation.getUpdatedAt(),
-                messageDORepository.findByConversationId(conversationId).stream()
+                messageDORepository.findByConversationId(conversation.getPlatformConversationId()).stream()
                         .map(this::convertToMessageDto)
                         .collect(Collectors.toList())
         );

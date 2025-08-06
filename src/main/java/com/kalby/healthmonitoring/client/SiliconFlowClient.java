@@ -68,12 +68,20 @@ public class SiliconFlowClient {
      * @param systemPrompt 系统提示词。
      * @return 包含通用聊天响应的 Flux 流。
      */
-    public Flux<CommonChatResponse> sendMessageStream(String model, String message, String systemPrompt) {
-        log.info("[SiliconFlow客户端] 准备发送文本流式消息。模型: {}", model);
+    public Flux<CommonChatResponse> sendMessageStream(String model, String message, String systemPrompt, List<ChatMessage> history) {
+        log.info("[SiliconFlow客户端] 准备发送文本流式消息。模型: {}, 历史消息数: {}", model, history != null ? history.size() : 0);
 
         // 1. 构建符合 SiliconFlow 格式的请求体
         List<ChatMessage> messages = new ArrayList<>();
-        messages.add(new ChatMessage("system", systemPrompt));
+        // 始终以系统提示词开始
+        if (StringUtils.isNotBlank(systemPrompt)) {
+            messages.add(new ChatMessage("system", systemPrompt));
+        }
+        // 添加历史消息
+        if (history != null && !history.isEmpty()) {
+            messages.addAll(history);
+        }
+        // 添加当前用户消息
         messages.add(new ChatMessage("user", message));
 
         PlatformChatRequest apiRequest = new PlatformChatRequest(
@@ -121,22 +129,31 @@ public class SiliconFlowClient {
      * @param text         用户输入的文本。
      * @param imageUrl     图片的 URL (可以是 http 链接或 Base64 Data URL)。
      * @param systemPrompt 系统提示词 (对于VLM可能不总被支持，但保留参数)。
+     * @param history      历史对话记录
      * @return 包含通用聊天响应的 Flux 流。
      */
-    public Flux<CommonChatResponse> sendVlmMessageStream(String model, String text, String imageUrl, String systemPrompt) {
-        log.info("[SiliconFlow客户端] 准备发送VLM流式消息。模型: {}", model);
+    public Flux<CommonChatResponse> sendVlmMessageStream(String model, String text, String imageUrl, String systemPrompt, List<ChatMessage> history) {
+        log.info("[SiliconFlow客户端] 准备发送VLM流式消息。模型: {}, 历史消息数: {}", model, history != null ? history.size() : 0);
 
         // 1. 构建符合 OpenAI VLM 格式的消息体
-        List<Object> content = new ArrayList<>();
-        if(!StringUtils.isEmpty(imageUrl)){
-            content.add(new ImageContent(new ImageUrl(imageUrl, "auto")));
-        }
-        content.add(new TextContent(text));
-
         List<ChatMessage> messages = new ArrayList<>();
+        // 始终以系统提示词开始
+        if (StringUtils.isNotBlank(systemPrompt)) {
+            messages.add(new ChatMessage("system", systemPrompt));
+        }
+        // 添加历史消息
+        if (history != null && !history.isEmpty()) {
+            messages.addAll(history);
+        }
 
-        messages.add(new ChatMessage("system", systemPrompt));
-        messages.add(new ChatMessage("user", content));
+        // 添加当前用户的图文消息
+        List<Object> currentUserContent = new ArrayList<>();
+        if (StringUtils.isNotBlank(imageUrl)) {
+            currentUserContent.add(new ImageContent(new ImageUrl(imageUrl, "auto")));
+        }
+        currentUserContent.add(new TextContent(text));
+        messages.add(new ChatMessage("user", currentUserContent));
+
 
         PlatformChatRequest apiRequest = new PlatformChatRequest(model, messages, true, 2048, true, 4096, 0.05, 0.7, 0.7, 50, 0.5, 1, Collections.emptyList());
 
