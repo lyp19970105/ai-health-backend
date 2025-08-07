@@ -3,11 +3,13 @@ package com.kalby.healthmonitoring.service;
 import com.kalby.healthmonitoring.client.DifyClient;
 import com.kalby.healthmonitoring.client.SiliconFlowClient;
 import com.kalby.healthmonitoring.dto.chat.ChatMessage;
+import com.kalby.healthmonitoring.dto.chat.TextContent;
 import com.kalby.healthmonitoring.dto.frontend.request.FrontendChatRequest;
 import com.kalby.healthmonitoring.dto.frontend.request.VlmChatRequest;
 import com.kalby.healthmonitoring.dto.frontend.request.VlmChatUrlRequest;
 import com.kalby.healthmonitoring.dto.frontend.response.ChatResponse;
 import com.kalby.healthmonitoring.dto.platform.CommonChatResponse;
+import com.kalby.healthmonitoring.enums.ModelType;
 import com.kalby.healthmonitoring.enums.Platform;
 import com.kalby.healthmonitoring.exception.BusinessException;
 import com.kalby.healthmonitoring.exception.ErrorCode;
@@ -80,8 +82,8 @@ public class ChatService {
         LlmAppConfigDO appConfig = llmAppConfigRepository.findByAppCode(frontendRequest.getAppCode())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ERROR, "找不到对应的应用配置：" + frontendRequest.getAppCode()));
 
-        final Long userId = frontendRequest.getUserId();
-        final String conversationId = frontendRequest.getConversationId();
+        Long userId = frontendRequest.getUserId();
+        String conversationId = frontendRequest.getConversationId();
 
         Flux<CommonChatResponse> commonChatResponseFlux;
         if (appConfig.getPlatform() == Platform.DIFY) {
@@ -89,7 +91,7 @@ public class ChatService {
             commonChatResponseFlux = difyClient.sendMessageStream(appConfig.getApiKey(), frontendRequest.getText(), conversationId);
         } else if (appConfig.getPlatform() == Platform.SILICON_FLOW) {
             // SiliconFlow 是无状态的，需要我们手动加载历史记录并传入
-            List<ChatMessage> history = loadHistoryMessages(conversationId);
+            List<ChatMessage> history = loadHistoryMessages(conversationId, appConfig.getModelType());
             commonChatResponseFlux = siliconFlowClient.sendMessageStream(appConfig.getModelName(), frontendRequest.getText(), appConfig.getSystemPrompt(), history);
         } else {
             return Flux.error(new BusinessException(ErrorCode.SYSTEM_ERROR, "未知的 AI 平台类型: " + appConfig.getPlatform()));
@@ -165,7 +167,7 @@ public class ChatService {
      */
     private Flux<ChatResponse> processVlmRequest(String text, String imageUrl, LlmAppConfigDO appConfig, Long userId, String conversationId) {
         // 对于 VLM，目前只支持 SiliconFlow，它需要手动传入历史记录
-        List<ChatMessage> history = loadHistoryMessages(conversationId);
+        List<ChatMessage> history = loadHistoryMessages(conversationId, appConfig.getModelType());
 
         Flux<CommonChatResponse> commonChatResponseFlux = siliconFlowClient.sendVlmMessageStream(
                 appConfig.getModelName(),
@@ -186,7 +188,7 @@ public class ChatService {
                     textRequest.setAppCode(appConfig.getAppCode());
                     textRequest.setText(text); // 只包含纯文本
                     textRequest.setUserId(userId);
-                    // 注意：VLM聊天通常是无状态的，不依赖前端传入的conversationId，所以这里可以不设置
+                    textRequest.setConversationId(conversationId);
                     self.saveFullConversation(textRequest, appConfig, capturedResponses, userId);
                 })
                 .map(commonResponse -> {
@@ -201,30 +203,40 @@ public class ChatService {
      * 根据会话ID加载历史消息记录。
      *
      * @param conversationId 内部会话ID。
+     * @param modelType      模型类型。
      * @return 格式化为 ChatMessage 对象的列表。
      */
-    private List<ChatMessage> loadHistoryMessages(String conversationId) {
+    private List<ChatMessage> loadHistoryMessages(String conversationId, ModelType modelType) {
         if (StringUtils.isBlank(conversationId)) {
             return Collections.emptyList();
         }
+
         try {
             List<MessageDO> messageDOs = messageDORepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
-
             log.info("[历史加载] 成功为会话ID {} 加载了 {} 条历史消息。", conversationId, messageDOs.size());
 
             // 将数据库实体 MessageDO 转换为平台客户端需要的 ChatMessage DTO
-            return messageDOs.stream()
-                    .map(messageDO -> {
-                        // 普通文本消息
-                        return new ChatMessage(messageDO.getRole(), messageDO.getContent());
-                    })
-                    .collect(Collectors.toList());
-
+            if (ModelType.VLM.equals(modelType)) {
+                // 对于VLM模型，需要将内容包装成列表格式
+                return messageDOs.stream()
+                        .map(messageDO -> {
+                            List<Object> contentList = new ArrayList<>();
+                            contentList.add(new TextContent(messageDO.getContent()));
+                            return new ChatMessage(messageDO.getRole(), contentList);
+                        })
+                        .collect(Collectors.toList());
+            } else {
+                // 普通文本模型使用简单字符串格式
+                return messageDOs.stream()
+                        .map(messageDO -> new ChatMessage(messageDO.getRole(), messageDO.getContent()))
+                        .collect(Collectors.toList());
+            }
         } catch (NumberFormatException e) {
             log.warn("[历史加载] 无效的会话ID格式: {}", conversationId);
             return Collections.emptyList();
         }
     }
+
 
 
     /**
@@ -271,24 +283,29 @@ public class ChatService {
             log.info("[对话保存] AI 返回内容为空，跳过保存。");
             return;
         }
-
-        // 1. 正确处理会话：查找或创建
+        // 1. 正确处理会话：根据前端请求的 conversationId 判断是新建还是更新
         ConversationDO conversation;
-        String conversationIdStr = request.getConversationId();
-        if (StringUtils.isNotBlank(conversationIdStr)) {
-            // 如果有ID，尝试查找
-            Long conversationId = Long.parseLong(conversationIdStr);
-            conversation = conversationDORepository.findById(conversationId)
+        String conversationIdFromRequest = request.getConversationId();
+
+        if (StringUtils.isNotBlank(conversationIdFromRequest)) {
+            // 如果前端带了ID，说明是已有对话，我们去查找
+            log.info("[对话保存] 前端提供了会话ID {}，正在查找现有会话...", conversationIdFromRequest);
+            conversation = conversationDORepository.findByPlatformConversationId(conversationIdFromRequest)
                     .orElseGet(() -> {
-                        // 如果找不到，记录警告并创建一个新的作为兜底
-                        log.warn("[对话保存] 提供了会话ID {}，但在数据库中未找到。将创建新会话。", conversationId);
-                        return createNewConversation(appConfig, finalUserId, platformConvId);
+                        // 作为一个健壮性措施，如果前端传来的ID在数据库里找不到，
+                        // 我们就记录一个警告，并为它创建一个新的记录，而不是抛出错误。
+                        log.warn("[对话保存] 前端提供的会话ID {} 在数据库中未找到！将为其创建新的会话记录。", conversationIdFromRequest);
+                        // 此时，platformConvId 应该使用前端传来的ID，因为这是前端识别该会话的唯一标识
+                        return createNewConversation(appConfig, finalUserId, conversationIdFromRequest);
                     });
         } else {
-            // 如果没有ID，创建新的
+            // 如果前端没带ID，说明是新对话，创建即可
+            log.info("[对话保存] 前端未提供会话ID，将创建新会话。");
             conversation = createNewConversation(appConfig, finalUserId, platformConvId);
         }
+
         ConversationDO savedConversation = conversationDORepository.save(conversation);
+        // 注意：这里的 internalConvId 必须从保存后的实体中重新获取，以确保拿到的是数据库中真实的值
         String internalConvId = savedConversation.getPlatformConversationId();
 
 

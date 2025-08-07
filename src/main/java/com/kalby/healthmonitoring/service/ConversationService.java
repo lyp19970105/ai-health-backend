@@ -58,8 +58,8 @@ public class ConversationService {
      * @throws BusinessException 如果根据 ID 找不到对应的会话。
      */
     @Transactional(readOnly = true)
-    public ConversationDetailDTO getConversationDetails(Long conversationId) {
-        ConversationDO conversation = conversationDORepository.findById(conversationId)
+    public ConversationDetailDTO getConversationDetails(String conversationId) {
+        ConversationDO conversation = conversationDORepository.findByPlatformConversationId(conversationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ERROR, "找不到ID为 " + conversationId + " 的会话记录"));
 
         return new ConversationDetailDTO(
@@ -83,6 +83,7 @@ public class ConversationService {
     private ConversationSummaryDTO convertToSummaryDto(ConversationDO conversation) {
         return new ConversationSummaryDTO(
                 conversation.getId(),
+                conversation.getPlatformConversationId(),
                 generateConversationTitle(conversation),
                 conversation.getCreatedAt(),
                 conversation.getUpdatedAt()

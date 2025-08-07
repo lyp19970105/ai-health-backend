@@ -24,6 +24,11 @@ public class ConversationSummaryDTO {
     private Long id;
 
     /**
+     * 平台的会话ID (例如 "msg_...")
+     */
+    private String platformConversationId;
+
+    /**
      * 会话的名称或标题。
      */
     private String name;

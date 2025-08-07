@@ -45,8 +45,9 @@ public class ChatController {
      */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<BaseResponse<ChatResponse>> chatStream(@RequestBody FrontendChatRequest chatRequest, @AuthenticationPrincipal UserPrincipal currentUser) {
-        log.info("接收到文本流式聊天请求: {}", chatRequest);
         RequestHelper.fillUserInfo(chatRequest, currentUser);
+        log.info("接收到文本流式聊天请求: {}", chatRequest);
+        log.info("用户信息: {}", chatRequest.getUserId());
         return chatService.streamChat(chatRequest)
                 .map(BaseResponse::success)
                 .onErrorResume(e -> {

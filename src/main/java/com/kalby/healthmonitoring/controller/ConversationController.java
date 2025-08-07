@@ -50,7 +50,7 @@ public class ConversationController {
      * @throws com.kalby.healthmonitoring.exception.BusinessException 如果找不到指定的会话ID，Service层应抛出异常。
      */
     @GetMapping("/{conversationId}")
-    public BaseResponse<ConversationDetailDTO> getConversationDetails(@PathVariable Long conversationId) {
+    public BaseResponse<ConversationDetailDTO> getConversationDetails(@PathVariable String conversationId) {
         ConversationDetailDTO conversationDetails = conversationService.getConversationDetails(conversationId);
         return BaseResponse.success(conversationDetails);
     }
